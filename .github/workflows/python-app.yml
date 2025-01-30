@@ -1,0 +1,62 @@
+import logging
+                    f"🎥 Click below to download 👇",
+            parse_mode="Markdown",
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        logger.error(f"Error in search_movie: {e}")
+        update.message.reply_text("⚠️ An error occurred while processing your request.")
+
+# Inline Search
+def inline_query(update: Update, context: CallbackContext):
+    query = update.inline_query.query
+    if not query:
+        return
+    
+    try:
+        search = movie_api.search(query)
+        results = []
+        for movie in search[:5]:
+            title = movie.title
+            year = movie.release_date.split("-")[0] if movie.release_date else "Unknown"
+            imdb_rating = movie.vote_average
+            short_link = shorten_url(f"https://yourmoviesite.com/{title.replace(' ', '_')}")
+            
+            results.append(
+                InlineQueryResultArticle(
+                    id=str(uuid4()),
+                    title=f"{title} ({year}) - ⭐ {imdb_rating}/10",
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"🎬 *{title}* ({year})\n⭐ *IMDB Rating:* {imdb_rating}/10\n🔗 [Download]({short_link})",
+                        parse_mode="Markdown"
+                    )
+                )
+            )
+        
+        update.inline_query.answer(results)
+    except Exception as e:
+        logger.error(f"Error in inline_query: {e}")
+
+# Start Command
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text(
+        "🎬 *Welcome to FilmFlick!* 🎬\n"
+        "🔎 Use /search <movie name> to find movies.\n"
+        "🔥 Use inline search (@yourbotname <movie name>)\n"
+        "📥 Get download links instantly!\n\n"
+        "⚡ Powered by TMDB & Shortener API.",
+        parse_mode="Markdown"
+    )
+
+# Main Function
+def main():
+    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("search", search_movie))
+    dp.add_handler(InlineQueryHandler(inline_query))
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == "__main__":
+    main()
